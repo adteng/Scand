@@ -495,10 +495,12 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 			e.printStackTrace();
 		}
     }
+    
 	private native String scandFrame(int w,int h,byte[] yuv);
 	private native void setJNIEnv(String strTemplatePath);
 	static
 	{
 		System.loadLibrary("ScandImg");
 	}
+	
 }
