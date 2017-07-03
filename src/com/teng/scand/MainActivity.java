@@ -16,6 +16,8 @@ import com.google.zxing.ReaderException;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
+
+
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
@@ -44,6 +46,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.ZoomControls;
 
 
 public class MainActivity extends Activity  implements SurfaceHolder.Callback {
@@ -62,13 +65,36 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private boolean m_bFocus = false;
     private SVDraw  mSVDraw = null;
     Thread m_setFocusThread;	
-    int m_iSleep = 1000;
+    int m_iSleep = 100;
+    private int m_iMaxZoom = 0;
+    private int m_iZoom = 0;
     
     Handler m_handler = new Handler(){
         public void handleMessage(Message msg) {
             switch (msg.what) {      
             case 1:
-            	
+            	Size size = mCamera.getParameters().getPreviewSize();//获取预览大小
+            	synchronized(m_strLock)
+            	{
+            		Log.i("jefry", "w="+size.width+"  h="+size.height);
+            		String str = scandFrame(size.width,size.height,mBuffer);
+            		String[] s = str.split(",");
+            		int iSum = Integer.parseInt(s[0]);
+            		if(iSum > 0 && s.length > 4)
+            		{
+            			Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
+            			mSVDraw.drawRect(r);
+            		}
+            		else
+            			mSVDraw.clearDraw();
+            		Log.i("result", str);	
+            		TextView v = (TextView)findViewById(R.id.textView1);
+            		v.setText(str);
+            	}
+            	synchronized (m_setFocusThread)
+        		{
+        			m_setFocusThread.notifyAll();
+        		}
                 break;
             default:
             	break;
@@ -100,6 +126,38 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 	    holder = mSurfaceView.getHolder();
 	    holder.addCallback(this);
 	    // holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+	    
+	    ZoomControls zoomControls = (ZoomControls) findViewById(R.id.zoomControls1);
+        zoomControls.setOnZoomInClickListener (new View.OnClickListener() {
+                   @Override
+                   public void onClick(View v) {
+                           if(m_iZoom < m_iMaxZoom)
+                           {
+                                   m_iZoom = m_iZoom + 1;
+                                   android.hardware.Camera.Parameters params = mCamera.getParameters();
+                                   params.setZoom(m_iZoom);
+                                   mCamera.setParameters(params);
+                                   mCamera.autoFocus(mAutoFocusCallback);
+                           }
+                   }
+                  });
+        zoomControls.setOnZoomOutClickListener(new View.OnClickListener() {
+
+                   @Override
+                   public void onClick(View v) {
+                           if(m_iZoom > 0)
+                           {
+                                   m_iZoom = m_iZoom - 1;
+                                   android.hardware.Camera.Parameters params = mCamera.getParameters();
+                                   params.setZoom(m_iZoom);
+                                   mCamera.setParameters(params);
+                                   mCamera.autoFocus(mAutoFocusCallback);
+                           }
+                   }
+
+                  });
+	    
+	    
 	        
 	    mSVDraw = (SVDraw)findViewById(R.id.mDraw);
 	    mSVDraw.setVisibility(View.VISIBLE);  
@@ -117,20 +175,22 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 	    		}
         	   	while(mCamera != null)
         	   	{
-        	   		if(!m_bFocus)
-        	   		{
-        	   			m_bFocus = true;
-        	   			mCamera.autoFocus(mAutoFocusCallback);
-        	   		}
-        	   		try 
-        	   		{
-        	   			Thread.sleep(m_iSleep);
-        	   		} 
-        	   		catch (InterruptedException e) 
-        	   		{
-        	   			// TODO Auto-generated catch block
-        	   			e.printStackTrace();
-        	   		}
+        	   		Message message = new Message();      
+                    message.what = 1;
+    	   			try 
+    	   			{
+    	   				synchronized (m_setFocusThread) 
+    	   				{
+    	   					m_handler.sendMessage(message);
+    	   					m_setFocusThread.wait();
+    	   				}
+    	   				Thread.sleep(m_iSleep);
+    	   			} 
+    	   			catch (InterruptedException e) 
+    	   			{
+    	   				// TODO Auto-generated catch block
+    	   				e.printStackTrace();
+    	   			}
         	   	}
 	    	}
 	    }; 
@@ -173,7 +233,8 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             else
             	mCamera.setDisplayOrientation(0);  
             android.hardware.Camera.Parameters params = mCamera.getParameters();
-
+            
+            m_iMaxZoom = params.getMaxZoom();
 
             //params.setPreviewFormat(ImageFormat.JPEG);
             params.setPreviewFormat(ImageFormat.NV21);
@@ -284,24 +345,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             if (focused && m_bFocus)
             {
             	Log.w("2222222222222","22222222222222");
-            	Size size = mCamera.getParameters().getPreviewSize();//获取预览大小
-            	synchronized(m_strLock)
-            	{
-            		Log.i("jefry", "w="+size.width+"  h="+size.height);
-            		String str = scandFrame(size.width,size.height,mBuffer);
-            		String[] s = str.split(",");
-            		int iSum = Integer.parseInt(s[0]);
-            		if(iSum > 0 && s.length > 4)
-            		{
-            			Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
-            			mSVDraw.drawRect(r);
-            		}
-            		else
-            			mSVDraw.clearDraw();
-            		Log.i("result", str);	
-            		TextView v = (TextView)findViewById(R.id.textView1);
-            		v.setText(str);
-            	}
+            	
             }
             m_bFocus = false;
         }
@@ -484,6 +528,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         	Log.d("zxing", sResult);
         	TextView v = (TextView)findViewById(R.id.textView2);
     		v.setText(sResult);
+    		//m_iSleep = 15000;
         }
         catch (NotFoundException e)
         {

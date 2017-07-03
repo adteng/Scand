@@ -153,7 +153,7 @@ Mat Operater(Mat &gray)
 	threshold(detected_edges,img_bin,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
     Mat elementX = getStructuringElement(MORPH_RECT, Size(3, 3),Point(-1,-1));
     Mat m_ResImg;
-    dilate(img_bin, m_ResImg,elementX,Point(-1,-1),1);
+    dilate(img_bin, m_ResImg,elementX,Point(-1,-1),2);
 	//erode(m_ResImg, m_ResImg,elementX,Point(-1,-1),1);
 	//dilate(m_ResImg, m_ResImg,elementX,Point(-1,-1),1);	
 	return m_ResImg;
