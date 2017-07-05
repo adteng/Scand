@@ -1,12 +1,7 @@
 package com.teng.scand;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
 import com.google.zxing.NotFoundException;
@@ -17,7 +12,6 @@ import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
 
-
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
@@ -26,8 +20,6 @@ import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
-import android.hardware.Camera.PictureCallback;
-import android.hardware.Camera.ShutterCallback;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.os.Environment;
@@ -65,9 +57,11 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private boolean m_bFocus = false;
     private SVDraw  mSVDraw = null;
     Thread m_setFocusThread;	
-    int m_iSleep = 100;
+    int m_iSleep = 1000;
     private int m_iMaxZoom = 0;
     private int m_iZoom = 0;
+    int m_iSurfaceH;
+    int m_iSurfaceW;
     
     Handler m_handler = new Handler(){
         public void handleMessage(Message msg) {
@@ -82,7 +76,8 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             		int iSum = Integer.parseInt(s[0]);
             		if(iSum > 0 && s.length > 4)
             		{
-            			Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
+            			//Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
+            			Rect r = new Rect(Integer.parseInt(s[1])*m_iSurfaceW/size.height,Integer.parseInt(s[2])*m_iSurfaceH/size.width,Integer.parseInt(s[3])*m_iSurfaceW/size.height,Integer.parseInt(s[4])*m_iSurfaceH/size.width);
             			mSVDraw.drawRect(r);
             		}
             		else
@@ -201,6 +196,8 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,int height) 
 	{
 		// TODO Auto-generated method stub
+		m_iSurfaceH = height;
+		m_iSurfaceW = width;
 	}
 
 	@Override
@@ -269,71 +266,6 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         mCamera.release();
         mCamera = null;
 	}
-	/* 拍照的method */
-	private void takePicture() {
-        if (mCamera != null) {
-            mCamera.takePicture(shutterCallback, rawCallback, jpegCallback);
-        }
-    }
-
-    private ShutterCallback shutterCallback = new ShutterCallback() {
-        public void onShutter() {
-            /* 按下快门瞬间会调用这里的程序 */
-        	Log.w("jefry", "shutterCallback");
-        }
-    };
-
-    private PictureCallback rawCallback = new PictureCallback() {
-        public void onPictureTaken(byte[] _data, Camera _camera) {
-            /* 要处理raw data?写?否 */
-        	Log.w("============", "rawCallback");
-        }
-    };
-
-    //在takepicture中调用的回调方法之一，接收jpeg格式的图像
-    private PictureCallback jpegCallback = new PictureCallback() {
-        public void onPictureTaken(byte[] _data, Camera _camera) 
-        {
-            /*
-             * if (Environment.getExternalStorageState().equals(
-             * Environment.MEDIA_MOUNTED)) // 判断SD卡是否存在，并且可以可以读写 {
-             * 
-             * } else { Toast.makeText(EX07_16.this, "SD卡不存在或写保护",
-             * Toast.LENGTH_LONG) .show(); }
-             */
-            // Log.w("============", _data[55] + "");
-        	Log.w("============", strCaptureFilePath + "/1.jpg");
-            try 
-            {
-                /* 取得相片 */
-                Bitmap bm = BitmapFactory.decodeByteArray(_data, 0,
-                        _data.length);
-
-                /* 创建文件 */
-                File myCaptureFile = new File(strCaptureFilePath, "1.jpg");
-                BufferedOutputStream bos = new BufferedOutputStream(
-                        new FileOutputStream(myCaptureFile));
-                /* 采用压缩转档方法 */
-                bm.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-
-                /* 调用flush()方法，更新BufferStream */
-                bos.flush();
-
-                /* 结束OutputStream */
-                bos.close();
-
-                /* 让相片显示3秒后圳重设相机 */
-                // Thread.sleep(2000);
-                /* 重新设定Camera */
-                stopCamera();
-                initCamera();
-            } 
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        }
-    };
 
     /* 自定义class AutoFocusCallback */
     public final class MyAutoFocusCallback implements android.hardware.Camera.AutoFocusCallback 
@@ -493,18 +425,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     }
     public void showMsg(byte[] pData,int iDataLen)
     {
-		try {
-			String str = new String(pData,0,iDataLen,"UTF-8");
-			TextView v = (TextView)findViewById(R.id.textView2);
-			v.setText(str);
-			if(str.length() == 7 && str.getBytes().length == 8 && str.substring(0,1).getBytes().length == 2)
-				m_iSleep = 5000;
-			else
-				m_iSleep = 600;
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+
     }   
     
     public void zxing(int[] colors,int iWidth,int iHeight) 
@@ -528,7 +449,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         	Log.d("zxing", sResult);
         	TextView v = (TextView)findViewById(R.id.textView2);
     		v.setText(sResult);
-    		//m_iSleep = 15000;
+    		m_iSleep = 15000;
         }
         catch (NotFoundException e)
         {

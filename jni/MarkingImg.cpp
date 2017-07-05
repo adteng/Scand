@@ -96,8 +96,8 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		{
 			itc = contours.erase(itc);
 		}
-		else if(L1/L2 < 0.8)
-			itc = contours.erase(itc);
+		//else if(L2 - L1 < 0.8)
+		//	itc = contours.erase(itc);
 		else if(L2 < gray_bi.size().width/20.0)
 			itc = contours.erase(itc);
 		else
@@ -153,7 +153,7 @@ Mat Operater(Mat &gray)
 	threshold(detected_edges,img_bin,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
     Mat elementX = getStructuringElement(MORPH_RECT, Size(3, 3),Point(-1,-1));
     Mat m_ResImg;
-    dilate(img_bin, m_ResImg,elementX,Point(-1,-1),2);
+    dilate(img_bin, m_ResImg,elementX,Point(-1,-1),1);
 	//erode(m_ResImg, m_ResImg,elementX,Point(-1,-1),1);
 	//dilate(m_ResImg, m_ResImg,elementX,Point(-1,-1),1);	
 	return m_ResImg;
